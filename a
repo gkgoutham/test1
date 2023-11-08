@@ -1,130 +1,71 @@
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-public class UserDataSaveDynamicTables {
-    public static void main(String[] args) {
-        // Example user data
-        UserData userData = new UserData("John Doe", 25, "john@example.com");
-
-        // Define the number of tables dynamically
-        int numberOfTables = 3;
-
-        // Create an array of CompletableFuture for save operations
-        CompletableFuture<Void>[] saveOperations = new CompletableFuture[numberOfTables];
-
-        // Save user data in different tables independently and in parallel
-        for (int i = 0; i < numberOfTables; i++) {
-            saveOperations[i] = saveToTable(userData, i, UserData.class);
-        }
-
-        // Combine all save operations and wait for them to complete
-        CompletableFuture<Void> allSaveOperations = CompletableFuture.allOf(saveOperations);
-
-        // Perform any final action after all save operations are completed
-        allSaveOperations.thenRun(() -> {
-            System.out.println("All save operations completed successfully.");
-            // Additional actions, if needed
-        }).join();
-    }
-
-    private static <T> CompletableFuture<Void> saveToTable(T data, int tableIndex, Class<T> dataType) {
-        return CompletableFuture.runAsync(() -> {
-            // Simulate saving data to a dynamic table
-            System.out.println("Saving to Table " + tableIndex + ": " + data);
-            // Add your actual database save operation code here using 'dataType'
-        });
-    }
-
-    static class UserData {
-        private final String name;
-        private final int age;
-        private final String email;
-
-        public UserData(String name, int age, String email) {
-            this.name = name;
-            this.age = age;
-            this.email = email;
-        }
-
-        @Override
-        public String toString() {
-            return "UserData{" +
-                    "name='" + name + '\'' +
-                    ", age=" + age +
-                    ", email='" + email + '\'' +
-                    '}';
-        }
-    }
-}
-
-
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public interface TableSaver<T> {
-    CompletableFuture<Void> saveToTable(T data, int tableIndex, Function<T, T> dataProcessor);
-}
+public class UserDataSaverBuilder {
+    private final UserDataSaver.UserData userData;
+    private final List<CompletableFuture<Void>> saveOperations = new ArrayList<>();
 
-public class UserDataSaver implements TableSaver<UserData> {
-    @Override
-    public CompletableFuture<Void> saveToTable(UserData data, int tableIndex, Function<UserData, UserData> dataProcessor) {
-        return CompletableFuture.runAsync(() -> {
-            // Process data using the provided function
-            UserData processedData = dataProcessor.apply(data);
-
-            // Simulate saving processed user data to a dynamic table
-            System.out.println("Saving to Table " + tableIndex + ": " + processedData);
-            // Add your actual database save operation code here
-        });
+    public UserDataSaverBuilder(UserDataSaver.UserData userData) {
+        this.userData = userData;
     }
-}
 
-public class UserDataSaveDynamicTables {
-    public static void main(String[] args) {
-        // Example user data
-        UserData userData = new UserData("John Doe", 25, "john@example.com");
+    public UserDataSaverBuilder addSaveOperation(Function<UserDataSaver.UserData, UserDataSaver.UserData> dataProcessor, long timeout) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
-        // Define the number of tables dynamically
-        int numberOfTables = 3;
+        UserDataSaver.UserData processedData = dataProcessor.apply(userData);
 
-        // Create an array of CompletableFuture for save operations
-        CompletableFuture<Void>[] saveOperations = new CompletableFuture[numberOfTables];
+        CompletableFuture.runAsync(() -> {
+            try {
+                System.out.println("Saving: " + processedData);
+                // Add your actual database save operation code here
 
-        // Save user data in different tables independently and in parallel with data processing
-        for (int i = 0; i < numberOfTables; i++) {
-            TableSaver<UserData> tableSaver = new UserDataSaver();
-            saveOperations[i] = tableSaver.saveToTable(userData, i, Function.identity());
-        }
+                // Simulate a time-consuming save operation
+                TimeUnit.SECONDS.sleep(3);
+                future.complete(null); // Complete the future when the save operation is successful
+            } catch (Exception e) {
+                future.completeExceptionally(e); // Complete the future exceptionally if an error occurs
+            }
+        });
 
+        CompletableFuture<Void> saveOperation = future.completeOnTimeout(null, timeout, TimeUnit.SECONDS);
+        saveOperations.add(saveOperation);
+
+        return this;
+    }
+
+    public CompletableFuture<Void> build() {
         // Combine all save operations and wait for them to complete
-        CompletableFuture<Void> allSaveOperations = CompletableFuture.allOf(saveOperations);
+        CompletableFuture<Void> combinedOperations = CompletableFuture.allOf(
+                saveOperations.toArray(new CompletableFuture[0])
+        );
 
         // Perform any final action after all save operations are completed
-        allSaveOperations.thenRun(() -> {
+        return combinedOperations.thenCompose(ignored -> {
             System.out.println("All save operations completed successfully.");
-            // Additional actions, if needed
-        }).join();
+            // Additional final actions, if needed
+
+            // Returning a CompletableFuture for further chaining or joining
+            return CompletableFuture.completedFuture(null);
+        }).exceptionally(throwable -> {
+            System.err.println("At least one save operation completed exceptionally: " + throwable.getMessage());
+            return null; // Handle the exception as needed
+        });
     }
 
-    static class UserData {
-        private final String name;
-        private final int age;
-        private final String email;
+    public static void main(String[] args) {
+        // Example user data
+        UserDataSaver.UserData userData = new UserDataSaver.UserData("John Doe", 25, "john@example.com");
 
-        public UserData(String name, int age, String email) {
-            this.name = name;
-            this.age = age;
-            this.email = email;
-        }
+        // Using the builder pattern to create a CompletableFuture for consolidated save operations
+        CompletableFuture<Void> finalOperation = new UserDataSaverBuilder(userData)
+                .addSaveOperation(Function.identity(), 5)
+                .addSaveOperation(user -> new UserDataSaver.UserData(user.getName(), user.getAge() + 1, user.getEmail()), 8)
+                .build();
 
-        @Override
-        public String toString() {
-            return "UserData{" +
-                    "name='" + name + '\'' +
-                    ", age=" + age +
-                    ", email='" + email + '\'' +
-                    '}';
-        }
+        // Wait for the final operation to complete
+        finalOperation.join();
     }
 }
-
-
