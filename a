@@ -5,14 +5,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class DataSaverBuilder<T, V> {
-    private final T data;
     private final List<CompletableFuture<Void>> saveOperations = new ArrayList<>();
 
-    public DataSaverBuilder(T data) {
-        this.data = data;
-    }
-
-    public DataSaverBuilder<T, V> addSaveOperation(Function<T, V> dataProcessor, long timeout) {
+    public DataSaverBuilder<T, V> addSaveOperation(T data, Function<T, V> dataProcessor, long timeout) {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
         V processedData = dataProcessor.apply(data);
@@ -74,9 +69,9 @@ public class DataSaverBuilder<T, V> {
         UserData userData = new UserData("John Doe", 25, "john@example.com");
 
         // Using the builder pattern to create a CompletableFuture for consolidated save operations
-        CompletableFuture<Void> finalOperation = new DataSaverBuilder<>(userData)
-                .addSaveOperation(Function.identity(), 5) // No transformation
-                .addSaveOperation(user -> user.getName().toUpperCase(), 8) // Transform name to uppercase
+        CompletableFuture<Void> finalOperation = new DataSaverBuilder<UserData, String>()
+                .addSaveOperation(userData, Function.identity(), 5) // No transformation
+                .addSaveOperation(userData, user -> user.getName().toUpperCase(), 8) // Transform name to uppercase
                 .build();
 
         // Wait for the final operation to complete
