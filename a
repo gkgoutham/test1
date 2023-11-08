@@ -55,3 +55,76 @@ public class UserDataSaveDynamicTables {
         }
     }
 }
+
+
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+
+public interface TableSaver<T> {
+    CompletableFuture<Void> saveToTable(T data, int tableIndex, Function<T, T> dataProcessor);
+}
+
+public class UserDataSaver implements TableSaver<UserData> {
+    @Override
+    public CompletableFuture<Void> saveToTable(UserData data, int tableIndex, Function<UserData, UserData> dataProcessor) {
+        return CompletableFuture.runAsync(() -> {
+            // Process data using the provided function
+            UserData processedData = dataProcessor.apply(data);
+
+            // Simulate saving processed user data to a dynamic table
+            System.out.println("Saving to Table " + tableIndex + ": " + processedData);
+            // Add your actual database save operation code here
+        });
+    }
+}
+
+public class UserDataSaveDynamicTables {
+    public static void main(String[] args) {
+        // Example user data
+        UserData userData = new UserData("John Doe", 25, "john@example.com");
+
+        // Define the number of tables dynamically
+        int numberOfTables = 3;
+
+        // Create an array of CompletableFuture for save operations
+        CompletableFuture<Void>[] saveOperations = new CompletableFuture[numberOfTables];
+
+        // Save user data in different tables independently and in parallel with data processing
+        for (int i = 0; i < numberOfTables; i++) {
+            TableSaver<UserData> tableSaver = new UserDataSaver();
+            saveOperations[i] = tableSaver.saveToTable(userData, i, Function.identity());
+        }
+
+        // Combine all save operations and wait for them to complete
+        CompletableFuture<Void> allSaveOperations = CompletableFuture.allOf(saveOperations);
+
+        // Perform any final action after all save operations are completed
+        allSaveOperations.thenRun(() -> {
+            System.out.println("All save operations completed successfully.");
+            // Additional actions, if needed
+        }).join();
+    }
+
+    static class UserData {
+        private final String name;
+        private final int age;
+        private final String email;
+
+        public UserData(String name, int age, String email) {
+            this.name = name;
+            this.age = age;
+            this.email = email;
+        }
+
+        @Override
+        public String toString() {
+            return "UserData{" +
+                    "name='" + name + '\'' +
+                    ", age=" + age +
+                    ", email='" + email + '\'' +
+                    '}';
+        }
+    }
+}
+
+
