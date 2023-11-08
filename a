@@ -1,0 +1,57 @@
+import java.util.concurrent.CompletableFuture;
+
+public class UserDataSaveDynamicTables {
+    public static void main(String[] args) {
+        // Example user data
+        UserData userData = new UserData("John Doe", 25, "john@example.com");
+
+        // Define the number of tables dynamically
+        int numberOfTables = 3;
+
+        // Create an array of CompletableFuture for save operations
+        CompletableFuture<Void>[] saveOperations = new CompletableFuture[numberOfTables];
+
+        // Save user data in different tables independently and in parallel
+        for (int i = 0; i < numberOfTables; i++) {
+            saveOperations[i] = saveToTable(userData, i, UserData.class);
+        }
+
+        // Combine all save operations and wait for them to complete
+        CompletableFuture<Void> allSaveOperations = CompletableFuture.allOf(saveOperations);
+
+        // Perform any final action after all save operations are completed
+        allSaveOperations.thenRun(() -> {
+            System.out.println("All save operations completed successfully.");
+            // Additional actions, if needed
+        }).join();
+    }
+
+    private static <T> CompletableFuture<Void> saveToTable(T data, int tableIndex, Class<T> dataType) {
+        return CompletableFuture.runAsync(() -> {
+            // Simulate saving data to a dynamic table
+            System.out.println("Saving to Table " + tableIndex + ": " + data);
+            // Add your actual database save operation code here using 'dataType'
+        });
+    }
+
+    static class UserData {
+        private final String name;
+        private final int age;
+        private final String email;
+
+        public UserData(String name, int age, String email) {
+            this.name = name;
+            this.age = age;
+            this.email = email;
+        }
+
+        @Override
+        public String toString() {
+            return "UserData{" +
+                    "name='" + name + '\'' +
+                    ", age=" + age +
+                    ", email='" + email + '\'' +
+                    '}';
+        }
+    }
+}
