@@ -4,18 +4,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public class UserDataSaverBuilder {
-    private final UserDataSaver.UserData userData;
+public class DataSaverBuilder<T, V> {
+    private final T data;
     private final List<CompletableFuture<Void>> saveOperations = new ArrayList<>();
 
-    public UserDataSaverBuilder(UserDataSaver.UserData userData) {
-        this.userData = userData;
+    public DataSaverBuilder(T data) {
+        this.data = data;
     }
 
-    public UserDataSaverBuilder addSaveOperation(Function<UserDataSaver.UserData, UserDataSaver.UserData> dataProcessor, long timeout) {
+    public DataSaverBuilder<T, V> addSaveOperation(Function<T, V> dataProcessor, long timeout) {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
-        UserDataSaver.UserData processedData = dataProcessor.apply(userData);
+        V processedData = dataProcessor.apply(data);
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -42,30 +42,65 @@ public class UserDataSaverBuilder {
                 saveOperations.toArray(new CompletableFuture[0])
         );
 
-        // Perform any final action after all save operations are completed
-        return combinedOperations.thenCompose(ignored -> {
-            System.out.println("All save operations completed successfully.");
-            // Additional final actions, if needed
+        // Perform validation before joining
+        return combinedOperations.thenCompose(ignored -> validateSaveOperations())
+                .exceptionally(throwable -> {
+                    System.err.println("Validation failed: " + throwable.getMessage());
+                    return null; // Handle the exception as needed
+                });
+    }
 
-            // Returning a CompletableFuture for further chaining or joining
-            return CompletableFuture.completedFuture(null);
-        }).exceptionally(throwable -> {
-            System.err.println("At least one save operation completed exceptionally: " + throwable.getMessage());
-            return null; // Handle the exception as needed
-        });
+    private CompletableFuture<Void> validateSaveOperations() {
+        List<CompletableFuture<Void>> failedOperations = new ArrayList<>();
+
+        for (CompletableFuture<Void> saveOperation : saveOperations) {
+            if (saveOperation.isCompletedExceptionally()) {
+                failedOperations.add(saveOperation);
+            }
+        }
+
+        if (!failedOperations.isEmpty()) {
+            // Handle failed operations, if needed
+            return CompletableFuture.allOf(failedOperations.toArray(new CompletableFuture[0]))
+                    .thenCompose(ignored -> CompletableFuture.failedFuture(new RuntimeException("At least one operation failed.")));
+        }
+
+        // All operations completed successfully
+        return CompletableFuture.completedFuture(null);
     }
 
     public static void main(String[] args) {
-        // Example user data
-        UserDataSaver.UserData userData = new UserDataSaver.UserData("John Doe", 25, "john@example.com");
+        // Example data
+        UserData userData = new UserData("John Doe", 25, "john@example.com");
 
         // Using the builder pattern to create a CompletableFuture for consolidated save operations
-        CompletableFuture<Void> finalOperation = new UserDataSaverBuilder(userData)
-                .addSaveOperation(Function.identity(), 5)
-                .addSaveOperation(user -> new UserDataSaver.UserData(user.getName(), user.getAge() + 1, user.getEmail()), 8)
+        CompletableFuture<Void> finalOperation = new DataSaverBuilder<>(userData)
+                .addSaveOperation(Function.identity(), 5) // No transformation
+                .addSaveOperation(user -> user.getName().toUpperCase(), 8) // Transform name to uppercase
                 .build();
 
         // Wait for the final operation to complete
         finalOperation.join();
+    }
+
+    static class UserData {
+        private final String name;
+        private final int age;
+        private final String email;
+
+        public UserData(String name, int age, String email) {
+            this.name = name;
+            this.age = age;
+            this.email = email;
+        }
+
+        @Override
+        public String toString() {
+            return "UserData{" +
+                    "name='" + name + '\'' +
+                    ", age=" + age +
+                    ", email='" + email + '\'' +
+                    '}';
+        }
     }
 }
