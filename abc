@@ -1,0 +1,90 @@
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.api.LayoutComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
+import org.junit.jupiter.api.Test;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class CustomAppenderTest {
+
+    @Test
+    public void testCustomAppender() {
+        // Set up custom configuration with your appender
+        Configuration customConfiguration = createCustomConfiguration();
+
+        // Set the custom configuration
+        System.setProperty("log4j.configurationFile", ""); // Disable automatic configuration
+
+        TestAppender testAppender = new TestAppender("TestAppender", null,
+                createLayout(), true);
+        testAppender.start();
+        customConfiguration.addAppender(testAppender);
+        customConfiguration.getRootLoggerConfig().addAppender(testAppender, null, null);
+
+        // Use the Logger
+        Logger logger = LogManager.getLogger(CustomAppenderTest.class);
+        logger.info("Test message");
+
+        // Your test assertions based on the TestAppender's captured logs
+        assertTrue(TestAppender.hasLogMessageContaining("Test message"));
+
+        // Clean up
+        testAppender.stop();
+        System.clearProperty("log4j.configurationFile");
+    }
+
+    private LayoutComponentBuilder createLayout() {
+        return ConfigurationBuilderFactory.newConfigurationBuilder().newLayout("PatternLayout")
+                .addAttribute("pattern", "%m%n");
+    }
+
+    private Configuration createCustomConfiguration() {
+        ConfigurationBuilder<BuiltConfiguration> builder = ConfigurationBuilderFactory.newConfigurationBuilder();
+
+        // Create a custom appender for testing
+        AppenderComponentBuilder appenderBuilder = builder.newAppender("TestAppender", "Test")
+                .addAttribute("target", TestAppender.class.getName());
+        appenderBuilder.add(createLayout());
+        builder.add(appenderBuilder);
+
+        // Set the custom appender for the root logger
+        builder.add(builder.newRootLogger(org.apache.logging.log4j.Level.INFO)
+                .add(builder.newAppenderRef("TestAppender"))); // Reference the appender by name
+
+        return builder.build();
+    }
+}
+
+class TestAppender extends AbstractAppender {
+
+    private static List<String> logMessages = new ArrayList<>();
+
+    protected TestAppender(String name, org.apache.logging.log4j.core.Filter filter,
+                           Layout<? extends Serializable> layout, boolean ignoreExceptions) {
+        super(name, filter, layout, ignoreExceptions);
+    }
+
+    @Override
+    public void append(LogEvent event) {
+        logMessages.add(event.getMessage().getFormattedMessage());
+    }
+
+    public static List<String> getLogMessages() {
+        return logMessages;
+    }
+
+    public static boolean hasLogMessageContaining(String substring) {
+        return logMessages.stream().anyMatch(message -> message.contains(substring));
+    }
+}
