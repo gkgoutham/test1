@@ -1,0 +1,103 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
+public class EntitySaver<T, R> {
+
+    public CompletableFuture<Void> saveEntities(T dto, List<SaveEntity<T, R>> saveEntities) {
+        List<CompletableFuture<R>> saveFutures = new ArrayList<>();
+
+        for (SaveEntity<T, R> saveEntity : saveEntities) {
+            CompletableFuture<R> saveFuture = CompletableFuture.supplyAsync(() -> {
+                sleep(3);
+                T processedData = saveEntity.getDataProcessor().apply(dto);
+                return saveEntity.getResponseFunction().apply(processedData);
+            }, Executors.newFixedThreadPool(5));
+
+            saveFutures.add(saveFuture);
+        }
+
+        return CompletableFuture.allOf(saveFutures.toArray(new CompletableFuture[0]))
+                .exceptionally(ex -> {
+                    System.err.println("Rolling back operations due to failure: " + ex.getMessage());
+                    saveFutures.forEach(future -> future.cancel(true));
+                    return null;
+                });
+    }
+
+    private void sleep(int seconds) {
+        try {
+            TimeUnit.SECONDS.sleep(seconds);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        // Example data
+        UserDTO userDTO = new UserDTO("John Doe", 25, "john@example.com", "Field1", "Field2", "Field3", "Field4", "Field5", "Field6", "Field7", "Field8", "Field9", "Field10");
+
+        // Save user data to different entities in parallel
+        EntitySaver<UserDTO, Void> entitySaver = new EntitySaver<>();
+        List<SaveEntity<UserDTO, Void>> saveEntities = List.of(
+                new SaveEntity<>(u -> new FAEntity(u.getField1(), u.getField2(), u.getField3()), Function.identity(), "FA"),
+                new SaveEntity<>(u -> new CGEntity(u.getField4(), u.getField5(), u.getField6(), u.getField7()), Function.identity(), "CG"),
+                new SaveEntity<>(u -> new LAEntity(u.getField8(), u.getField9(), u.getField10()), Function.identity(), "LA")
+        );
+
+        CompletableFuture<Void> finalOperation = entitySaver.saveEntities(userDTO, saveEntities);
+
+        try {
+            // Wait for the final operation to complete
+            finalOperation.get();
+            System.out.println("All operations completed successfully.");
+        } catch (Exception e) {
+            // Handle other exceptions if needed
+            System.err.println("Final operation failed: " + e.getMessage());
+        }
+    }
+
+    // Entity classes
+    static class UserDTO {
+        // ... (same as before)
+    }
+
+    static class FAEntity {
+        // ... (same as before)
+    }
+
+    static class CGEntity {
+        // ... (same as before)
+    }
+
+    static class LAEntity {
+        // ... (same as before)
+    }
+
+    static class SaveEntity<T, R> {
+        private final Function<T, ?> dataProcessor;
+        private final Function<?, R> responseFunction;
+        private final String entityName;
+
+        public SaveEntity(Function<T, ?> dataProcessor, Function<?, R> responseFunction, String entityName) {
+            this.dataProcessor = dataProcessor;
+            this.responseFunction = responseFunction;
+            this.entityName = entityName;
+        }
+
+        public Function<T, ?> getDataProcessor() {
+            return dataProcessor;
+        }
+
+        public Function<?, R> getResponseFunction() {
+            return responseFunction;
+        }
+
+        public String getEntityName() {
+            return entityName;
+        }
+    }
+}
