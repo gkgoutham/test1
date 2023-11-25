@@ -1,0 +1,119 @@
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.statemachine.StateMachine;
+import org.springframework.statemachine.config.EnableStateMachine;
+import org.springframework.statemachine.config.EnumStateMachineConfigurerAdapter;
+import org.springframework.statemachine.config.EnumStateMachineConfigurerAdapterConfigurer;
+import org.springframework.statemachine.config.builders.StateMachineConfigurerBuilder;
+import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
+import org.springframework.statemachine.config.model.ChoiceData;
+
+import java.util.EnumSet;
+
+@EnableStateMachine
+public class MyStateMachineConfig extends EnumStateMachineConfigurerAdapter<MyStateMachineConfig.States, MyStateMachineConfig.Events> {
+
+    public enum States {
+        STATE_A, STATE_B, STATE_C, STATE_D, STATE_P, STATE_Q, STATE_R
+    }
+
+    public enum Events {
+        START, EVENT_AB, EVENT_BC, EVENT_BD, EVENT_PR, EVENT_QR, EVENT_RD
+    }
+
+    @Autowired
+    private StateMachine<States, Events> stateMachine;
+
+    @Override
+    public void configure(StateMachineTransitionConfigurer<MyStateMachineConfig.States, MyStateMachineConfig.Events> transitions)
+            throws Exception {
+        transitions
+                .withExternal()
+                .source(States.STATE_A)
+                .target(States.STATE_B)
+                .event(Events.EVENT_AB)
+                .and()
+                .withExternal()
+                .source(States.STATE_B)
+                .target(States.STATE_C)
+                .event(Events.EVENT_BC)
+                .and()
+                .withExternal()
+                .source(States.STATE_C)
+                .target(States.STATE_D)
+                .event(Events.EVENT_RD)
+                .and()
+                .withExternal()
+                .source(States.STATE_B)
+                .target(States.STATE_P)
+                .event(Events.EVENT_BD)
+                .and()
+                .withExternal()
+                .source(States.STATE_P)
+                .target(States.STATE_Q)
+                .event(Events.EVENT_PR)
+                .and()
+                .withExternal()
+                .source(States.STATE_Q)
+                .target(States.STATE_R)
+                .event(Events.EVENT_QR)
+                .and()
+                .withExternal()
+                .source(States.STATE_R)
+                .target(States.STATE_D)
+                .event(Events.EVENT_RD);
+    }
+
+    @Override
+    public void configure(EnumStateMachineConfigurerAdapterConfigurer<MyStateMachineConfig.States, MyStateMachineConfig.Events> configurer)
+            throws Exception {
+        configurer
+                .withConfiguration()
+                .autoStartup(true);
+    }
+
+    @Override
+    public void configure(StateMachineConfigurerBuilder<MyStateMachineConfig.States, MyStateMachineConfig.Events> configurer)
+            throws Exception {
+        configurer
+                .withStates()
+                .initial(States.STATE_A)
+                .states(EnumSet.allOf(States.class))
+                .and()
+                .withChoice()
+                .source(States.STATE_B)
+                .first(States.STATE_C, this::isChoiceCondition)
+                .last(States.STATE_P);
+    }
+
+    private boolean isChoiceCondition(ChoiceData<MyStateMachineConfig.States, MyStateMachineConfig.Events> choiceData) {
+        // Replace with your actual condition logic
+        return true;
+    }
+
+    public static void main(String[] args) {
+        // Create a bean for the state machine configuration
+        @Bean
+        public EnumStateMachineConfigurerAdapter<MyStateMachineConfig.States, MyStateMachineConfig.Events> stateMachineConfigurer() {
+            return new MyStateMachineConfig();
+        }
+    }
+
+    // Example usage of state machine in a service or controller
+    public void simulateStateMachine() {
+        stateMachine.start();  // Start the state machine
+
+        // Send events to simulate the flow
+        stateMachine.sendEvent(Events.START);
+        stateMachine.sendEvent(Events.EVENT_AB);
+        stateMachine.sendEvent(Events.EVENT_BC);
+        stateMachine.sendEvent(Events.EVENT_BD);
+        stateMachine.sendEvent(Events.EVENT_PR);
+        stateMachine.sendEvent(Events.EVENT_QR);
+        stateMachine.sendEvent(Events.EVENT_RD);
+
+        // Get the current state after events
+        States currentState = stateMachine.getState().getId();
+        System.out.println("Current State: " + currentState);
+    }
+}
