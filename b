@@ -1,65 +1,27 @@
-<!-- src/app/login/login.component.html -->
-<div class="container-fluid">
-  <div class="row">
-    <div class="col-md-6 login-image">
-      <!-- Background Image -->
-    </div>
-    <div class="col-md-6 login-form">
-      <div class="d-flex align-items-center justify-content-center h-100">
-        <!-- SSO Login Icon -->
-        <div class="text-center">
-          <img class="mb-4" src="path/to/sso-icon.png" alt="SSO Icon" width="72" height="72">
-          <h1 class="h3 mb-3 font-weight-normal">Login using SSO</h1>
-        </div>
+// src/app/auth.guard.ts
+import { Injectable } from '@angular/core';
+import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import { AuthService } from './auth.service'; // Create this service to manage authentication state
 
-        <!-- Username and Password Fields (Shown only when passwordLoginDisabled is false) -->
-        <form *ngIf="!passwordLoginDisabled">
-          <div class="form-label-group">
-            <input type="text" id="username" class="form-control" placeholder="Username" required>
-            <label for="username">Username</label>
-          </div>
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(private authService: AuthService, private router: Router) {}
 
-          <div class="form-label-group">
-            <input type="password" id="password" class="form-control" placeholder="Password">
-            <label for="password">Password</label>
-          </div>
+  canActivate(
+    next: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot): boolean {
+    return this.checkLogin();
+  }
 
-          <!-- Login Button -->
-          <button class="btn btn-lg btn-primary btn-block" type="submit">Login</button>
-        </form>
-      </div>
+  checkLogin(): boolean {
+    if (this.authService.isAuthenticated()) { // Implement this method in your auth.service.ts
+      return true;
+    }
 
-      <!-- Enable/Disable Password Login Toggle -->
-      <div class="custom-control custom-checkbox mt-3">
-        <input type="checkbox" class="custom-control-input" id="togglePasswordLogin" [(ngModel)]="passwordLoginDisabled">
-        <label class="custom-control-label" for="togglePasswordLogin">Enable Password Login</label>
-      </div>
-    </div>
-  </div>
-</div>
-
-/* src/app/login/login.component.css */
-.login-image {
-  background: url('path/to/background-image.jpg') center center / cover no-repeat;
-  height: 100vh;
-}
-
-.login-form {
-  background-color: #f8f9fa;
-  padding: 40px;
-  height: 100vh;
-}
-
-.form-label-group {
-  position: relative;
-  margin-bottom: 1rem;
-}
-
-.form-label-group input {
-  height: 3rem;
-}
-
-.custom-control-input {
-  height: 1.5rem;
-  width: 1.5rem;
+    // Navigate to the login page if not authenticated
+    this.router.navigate(['/login']);
+    return false;
+  }
 }
