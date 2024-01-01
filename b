@@ -101,5 +101,48 @@ The provided example assumes that your TypeScript files are in the src directory
 ESLint and Stylelint can be extended with additional rules based on your project's coding standards and best practices.
 
 
+import { TestBed } from '@angular/core/testing';
+import { RouterTestingModule } from '@angular/router/testing';
+import { YourAuthGuard } from './your-auth.guard';
+import { AuthService } from './auth.service';
+
+describe('YourAuthGuard', () => {
+  let authGuard: YourAuthGuard;
+  let authService: AuthService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [YourAuthGuard, AuthService],
+    });
+
+    authGuard = TestBed.inject(YourAuthGuard);
+    authService = TestBed.inject(AuthService);
+  });
+
+  it('should be created', () => {
+    expect(authGuard).toBeTruthy();
+  });
+
+  it('should allow access if authenticated', () => {
+    spyOn(authService, 'isAuthenticated').and.returnValue(true);
+
+    const canActivate = authGuard.canActivate(null as any, null as any);
+
+    expect(canActivate).toBe(true);
+  });
+
+  it('should redirect to login if not authenticated', () => {
+    spyOn(authService, 'isAuthenticated').and.returnValue(false);
+    const routerSpy = spyOn(TestBed.inject(Router), 'navigate');
+
+    const canActivate = authGuard.canActivate(null as any, null as any);
+
+    expect(canActivate).toBe(false);
+    expect(routerSpy).toHaveBeenCalledWith(['/login']);
+  });
+});
+
+
 
 
