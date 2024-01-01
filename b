@@ -40,6 +40,10 @@ Copy code
 module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: './tsconfig.json', // Specify the path to your tsconfig.json file
+    tsconfigRootDir: __dirname,
+  },
   plugins: [
     '@typescript-eslint'
   ],
