@@ -63,7 +63,41 @@ Copy code
   "extends": "stylelint-config-standard",
   "plugins": ["stylelint-scss"],
   "rules": {
-    // Custom SCSS linting rules go here
+    "indentation": 2,
+    "selector-pseudo-element-no-unknown": [true, { "ignorePseudoElements": ["ng-deep"] }],
+    "at-rule-no-unknown": null,
+    "scss/at-rule-no-unknown": true,
+    "no-descending-specificity": null, // Allow descending specificity
+    "declaration-block-trailing-semicolon": "always",
+    "declaration-block-no-shorthand-property-overrides": true,
+    "block-no-empty": true,
+    "color-no-invalid-hex": true,
+    "comment-no-empty": true,
+    "no-duplicate-selectors": true,
+    "font-family-no-duplicate-names": true,
+    "font-family-no-missing-generic-family-keyword": true,
+    "function-calc-no-invalid": true,
+    "function-calc-no-unspaced-operator": true,
+    "function-linear-gradient-no-nonstandard-direction": true,
+    "keyframe-declaration-no-important": true,
+    "declaration-block-no-duplicate-properties": [true, { ignore: ["consecutive-duplicates-with-different-values"] }],
+    "declaration-block-no-redundant-longhand-properties": true,
+    "declaration-block-no-shorthand-property-overrides": true,
+    "selector-attribute-brackets-space-inside": "never",
+    "selector-attribute-operator-space-after": "never",
+    "selector-attribute-operator-space-before": "never",
+    "selector-attribute-quotes": "always",
+    "selector-combinator-space-after": "always",
+    "selector-combinator-space-before": "always",
+    "selector-descendant-combinator-no-non-space": true,
+    "selector-list-comma-space-after": "always",
+    "selector-list-comma-space-before": "never",
+    "selector-max-id": 0,
+    "string-no-newline": true,
+    "unit-no-unknown": true,
+    "value-keyword-case": "lower",
+    "value-list-comma-space-after": "always-single-line",
+    "value-list-comma-space-before": "never"
   }
 }
 Step 4: Configure ESLint and Stylelint Scripts in package.json
