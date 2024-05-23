@@ -1,10 +1,6 @@
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.*;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Date;
 
 public class DateConversion {
     public static void main(String[] args) {
@@ -26,12 +22,14 @@ public class DateConversion {
         // Convert the ZonedDateTime to UTC
         ZonedDateTime zonedDateTimeUTC = zonedDateTimeSGT.withZoneSameInstant(ZoneId.of("UTC"));
         
-        // Format the ZonedDateTime in UTC to a string
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm:ss");
-        String dueDateUTCStr = zonedDateTimeUTC.format(formatter);
+        // Convert the ZonedDateTime to an Instant
+        Instant instantUTC = zonedDateTimeUTC.toInstant();
+        
+        // Convert the Instant to a java.util.Date
+        Date dueDateUTC = Date.from(instantUTC);
         
         // Output the result
-        System.out.println("Due date in SGT: " + endOfDay.format(formatter));
-        System.out.println("Due date in UTC: " + dueDateUTCStr);
+        System.out.println("Due date in SGT: " + Date.from(zonedDateTimeSGT.toInstant()));
+        System.out.println("Due date in UTC: " + dueDateUTC);
     }
 }
