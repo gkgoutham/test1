@@ -1,0 +1,37 @@
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
+
+public class DateConversion {
+    public static void main(String[] args) {
+        // Get the current date
+        LocalDate today = LocalDate.now();
+        
+        // Calculate the last day of the current month
+        LocalDate lastDayOfMonth = today.with(TemporalAdjusters.lastDayOfMonth());
+        
+        // Set the time to the end of the day (23:59:59)
+        LocalDateTime endOfDay = LocalDateTime.of(lastDayOfMonth, LocalTime.of(23, 59, 59));
+        
+        // Define the SGT time zone
+        ZoneId sgtZoneId = ZoneId.of("Asia/Singapore");
+        
+        // Create a ZonedDateTime in SGT
+        ZonedDateTime zonedDateTimeSGT = endOfDay.atZone(sgtZoneId);
+        
+        // Convert the ZonedDateTime to UTC
+        ZonedDateTime zonedDateTimeUTC = zonedDateTimeSGT.withZoneSameInstant(ZoneId.of("UTC"));
+        
+        // Format the ZonedDateTime in UTC to a string
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm:ss");
+        String dueDateUTCStr = zonedDateTimeUTC.format(formatter);
+        
+        // Output the result
+        System.out.println("Due date in SGT: " + endOfDay.format(formatter));
+        System.out.println("Due date in UTC: " + dueDateUTCStr);
+    }
+}
