@@ -41,6 +41,38 @@ public class ParquetReaderUtil {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return records;
+        return import javax.swing.table.AbstractTableModel;
+import javax.swing.*;
+import java.util.List;
+
+public class TableModel extends AbstractTableModel {
+    private final List<Object[]> data;
+    private final String[] columnNames;
+
+    public TableModel(List<Object[]> data, String[] columnNames) {
+        this.data = data;
+        this.columnNames = columnNames;
+    }
+
+    @Override
+    public int getRowCount() {
+        return data.size();
+    }
+
+    @Override
+    public int getColumnCount() {
+        return columnNames.length;
+    }
+
+    @Override
+    public Object getValueAt(int rowIndex, int columnIndex) {
+        return data.get(rowIndex)[columnIndex];
+    }
+
+    @Override
+    public String getColumnName(int column) {
+        return columnNames[column];
     }
 }
+
+
