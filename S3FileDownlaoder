@@ -1,0 +1,141 @@
+package com.example.s3fileuploader;
+
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+
+public class S3FileUploader extends JFrame {
+    private JTextField apiEndpointField;
+    private JTextField bucketNameField;
+    private JTextField accessKeyField;
+    private JTextField secretKeyField;
+    private JTextField dirField;
+    private JButton listFilesButton;
+    private JList<String> fileList;
+    private DefaultListModel<String> listModel;
+    private JButton downloadButton;
+
+    private S3Client s3Client;
+
+    public S3FileUploader() {
+        super("S3 File Uploader");
+        setLayout(new FlowLayout());
+
+        apiEndpointField = new JTextField(20);
+        bucketNameField = new JTextField(20);
+        accessKeyField = new JTextField(20);
+        secretKeyField = new JTextField(20);
+        dirField = new JTextField(20);
+
+        listFilesButton = new JButton("List Files");
+        fileList = new JList<>();
+        listModel = new DefaultListModel<>();
+        fileList.setModel(listModel);
+        downloadButton = new JButton("Download Selected");
+
+        add(new JLabel("API Endpoint:"));
+        add(apiEndpointField);
+        add(new JLabel("Bucket Name:"));
+        add(bucketNameField);
+        add(new JLabel("Access Key:"));
+        add(accessKeyField);
+        add(new JLabel("Secret Key:"));
+        add(secretKeyField);
+        add(new JLabel("Directory:"));
+        add(dirField);
+        add(listFilesButton);
+        add(new JScrollPane(fileList));
+        add(downloadButton);
+
+        listFilesButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                listFiles();
+            }
+        });
+
+        downloadButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                downloadFile();
+            }
+        });
+
+        setSize(400, 300);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+
+    private void listFiles() {
+        String endpoint = apiEndpointField.getText();
+        String bucketName = bucketNameField.getText();
+        String accessKey = accessKeyField.getText();
+        String secretKey = secretKeyField.getText();
+        String dir = dirField.getText();
+
+        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+        s3Client = S3Client.builder()
+                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                .region(Region.of("us-west-2"))
+                .endpointOverride(URI.create(endpoint))
+                .build();
+
+        try {
+            ListObjectsV2Request listObjects = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .prefix(dir)
+                    .build();
+
+            ListObjectsV2Response listObjectsResponse = s3Client.listObjectsV2(listObjects);
+            listModel.clear();
+            for (S3Object object : listObjectsResponse.contents()) {
+                listModel.addElement(object.key());
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error listing files: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void downloadFile() {
+        String selectedFile = fileList.getSelectedValue();
+        if (selectedFile == null) {
+            JOptionPane.showMessageDialog(this, "Please select a file to download", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String endpoint = apiEndpointField.getText();
+        String bucketName = bucketNameField.getText();
+        String accessKey = accessKeyField.getText();
+        String secretKey = accessKeyField.getText();
+        String dir = dirField.getText();
+
+        try {
+            Path downloadPath = Paths.get(System.getProperty("user.home"), selectedFile);
+            Files.createDirectories(downloadPath.getParent());
+
+            s3Client.getObject(r -> r.bucket(bucketName).key(selectedFile), downloadPath);
+
+            JOptionPane.showMessageDialog(this, "File downloaded successfully to " + downloadPath, "Success", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error downloading file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public static void main(String[] args) {
+        new S3FileUploader();
+    }
+}
