@@ -74,5 +74,86 @@ public class TableModel extends AbstractTableModel {
         return columnNames[column];
     }
 }
+    private void downloadFile(ActionEvent e) {
+        var selectedFile = fileList.getSelectedValue();
+        if (selectedFile == null) {
+            JOptionPane.showMessageDialog(this, "Please select a file to download", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        var endpoint = apiEndpointField.getText();
+        var bucketName = bucketNameField.getText();
+        var accessKey = accessKeyField.getText();
+        var secretKey = secretKeyField.getText();
+
+        try {
+            var downloadPath = Paths.get(System.getProperty("user.home"), selectedFile);
+            Files.createDirectories(downloadPath.getParent());
+
+            s3Client.getObject(r -> r.bucket(bucketName).key(selectedFile), downloadPath);
+
+            JOptionPane.showMessageDialog(this, "File downloaded successfully to " + downloadPath, "Success", JOptionPane.INFORMATION_MESSAGE);
+            
+            // Read and display the Parquet file
+            displayParquetFile(downloadPath.toFile());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error downloading file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void displayParquetFile(File file) {
+        try {
+            List<Object[]> data = ParquetReaderUtil.readParquetFile(file);
+            String[] columnNames = {"Column1", "Column2", "Column3"}; // Replace with actual column names
+            TableModel tableModel = new TableModel(data, columnNames);
+            table.setModel(tableModel);
+            
+            // Add filtering functionality
+            TableRowSorter<TableModel> sorter = new TableRowSorter<>(tableModel);
+            table.setRowSorter(sorter);
+
+            JTextField filterText = new JTextField();
+            filterText.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    applyFilter();
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    applyFilter();
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    applyFilter();
+                }
+
+                private void applyFilter() {
+                    String text = filterText.getText();
+                    if (text.trim().length() == 0) {
+                        sorter.setRowFilter(null);
+                    } else {
+                        sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+                    }
+                }
+            });
+
+            var filterPanel = new JPanel(new BorderLayout());
+            filterPanel.add(new JLabel("Filter:"), BorderLayout.WEST);
+            filterPanel.add(filterText, BorderLayout.CENTER);
+
+            add(filterPanel, BorderLayout.SOUTH);
+            revalidate();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error reading Parquet file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public static void main(String[] args) {
+        new S3FileDownloader();
+    }
+}a
+
 
 
