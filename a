@@ -1,101 +1,46 @@
+import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.arrow.vector.types.pojo.FieldType;
+import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowFileReader;
+import org.apache.arrow.vector.ipc.message.MessageChannelReader;
+import org.apache.arrow.vector.ipc.message.MessageChannelReader;
+import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.FieldType;
+import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.ipc.ArrowFileReader;
+import org.apache.arrow.vector.ipc.message.MessageChannelReader;
+import org.apache.arrow.vector.util.SchemaUtil;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.PositionInputStream;
+import org.apache.hadoop.fs.Path;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
-public class DataSaverBuilder<T, V> {
-    private final List<CompletableFuture<Void>> saveOperations = new ArrayList<>();
-
-    public DataSaverBuilder<T, V> addSaveOperation(T data, Function<T, V> dataProcessor, long timeout) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-
-        V processedData = dataProcessor.apply(data);
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                System.out.println("Saving: " + processedData);
-                // Add your actual database save operation code here
-
-                // Simulate a time-consuming save operation
-                TimeUnit.SECONDS.sleep(3);
-                future.complete(null); // Complete the future when the save operation is successful
-            } catch (Exception e) {
-                future.completeExceptionally(e); // Complete the future exceptionally if an error occurs
+public class ParquetReaderUtil {
+    public static List<Object[]> readParquetFile(File file) {
+        List<Object[]> records = new ArrayList<>();
+        try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file.toURI())).build()) {
+            Group group;
+            while ((group = reader.read()) != null) {
+                Object[] record = new Object[group.getType().getFieldCount()];
+                for (int i = 0; i < group.getType().getFieldCount(); i++) {
+                    record[i] = group.getValueToString(group.getType().getField(i).getName(), 0);
+                }
+                records.add(record);
             }
-        });
-
-        CompletableFuture<Void> saveOperation = future.completeOnTimeout(null, timeout, TimeUnit.SECONDS);
-        saveOperations.add(saveOperation);
-
-        return this;
-    }
-
-    public CompletableFuture<Void> build() {
-        // Combine all save operations and wait for them to complete
-        CompletableFuture<Void> combinedOperations = CompletableFuture.allOf(
-                saveOperations.toArray(new CompletableFuture[0])
-        );
-
-        // Perform validation before joining
-        return combinedOperations.thenCompose(ignored -> validateSaveOperations())
-                .exceptionally(throwable -> {
-                    System.err.println("Validation failed: " + throwable.getMessage());
-                    return null; // Handle the exception as needed
-                });
-    }
-
-    private CompletableFuture<Void> validateSaveOperations() {
-        List<CompletableFuture<Void>> failedOperations = new ArrayList<>();
-
-        for (CompletableFuture<Void> saveOperation : saveOperations) {
-            if (saveOperation.isCompletedExceptionally()) {
-                failedOperations.add(saveOperation);
-            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-
-        if (!failedOperations.isEmpty()) {
-            // Handle failed operations, if needed
-            return CompletableFuture.allOf(failedOperations.toArray(new CompletableFuture[0]))
-                    .thenCompose(ignored -> CompletableFuture.failedFuture(new RuntimeException("At least one operation failed.")));
-        }
-
-        // All operations completed successfully
-        return CompletableFuture.completedFuture(null);
-    }
-
-    public static void main(String[] args) {
-        // Example data
-        UserData userData = new UserData("John Doe", 25, "john@example.com");
-
-        // Using the builder pattern to create a CompletableFuture for consolidated save operations
-        CompletableFuture<Void> finalOperation = new DataSaverBuilder<UserData, String>()
-                .addSaveOperation(userData, Function.identity(), 5) // No transformation
-                .addSaveOperation(userData, user -> user.getName().toUpperCase(), 8) // Transform name to uppercase
-                .build();
-
-        // Wait for the final operation to complete
-        finalOperation.join();
-    }
-
-    static class UserData {
-        private final String name;
-        private final int age;
-        private final String email;
-
-        public UserData(String name, int age, String email) {
-            this.name = name;
-            this.age = age;
-            this.email = email;
-        }
-
-        @Override
-        public String toString() {
-            return "UserData{" +
-                    "name='" + name + '\'' +
-                    ", age=" + age +
-                    ", email='" + email + '\'' +
-                    '}';
-        }
+        return records;
     }
 }
