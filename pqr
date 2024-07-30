@@ -1,0 +1,314 @@
+That sounds like a good approach. Converting each `Object[]` to a POJO class improves code readability and type safety. Using `Optional` can signal the end of the queue effectively. Here’s how you can adjust the implementation:
+
+### Define a POJO Class
+
+First, define a POJO class to represent the database records.
+
+```java
+package com.example.demo.model;
+
+public class Record {
+    private String field1;
+    private String field2;
+    private double field3;
+
+    // Getters and Setters
+    public String getField1() {
+        return field1;
+    }
+
+    public void setField1(String field1) {
+        this.field1 = field1;
+    }
+
+    public String getField2() {
+        return field2;
+    }
+
+    public void setField2(String field2) {
+        this.field2 = field2;
+    }
+
+    public double getField3() {
+        return field3;
+    }
+
+    public void setField3(double field3) {
+        this.field3 = field3;
+    }
+}
+```
+
+### Stage 1: Service to Get Data from Database and Push to BlockingQueue
+
+Modify the service to convert `Object[]` to `Record` and push to `BlockingQueue` as `Optional<Record>`.
+
+```java
+package com.example.demo.service;
+
+import com.example.demo.model.Record;
+import org.springframework.stereotype.Service;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
+import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+@Service
+public class DataFetchingService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    private static final int BATCH_SIZE = 1000;
+
+    private final BlockingQueue<Optional<Record>> queue = new LinkedBlockingQueue<>(BATCH_SIZE * 2);
+
+    public BlockingQueue<Optional<Record>> getQueue() {
+        return queue;
+    }
+
+    public void fetchData() {
+        try {
+            Query query = entityManager.createQuery("SELECT e.field1, e.field2, e.field3 FROM Entity e");
+            query.setHint("org.hibernate.fetchSize", BATCH_SIZE);
+            query.unwrap(org.hibernate.query.Query.class)
+                    .scroll(org.hibernate.ScrollMode.FORWARD_ONLY)
+                    .forEachRemaining(record -> {
+                        try {
+                            Object[] fields = (Object[]) record;
+                            Record rec = new Record();
+                            rec.setField1((String) fields[0]);
+                            rec.setField2((String) fields[1]);
+                            rec.setField3((Double) fields[2]);
+                            queue.put(Optional.of(rec));
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+        } finally {
+            // Signal end of data
+            try {
+                queue.put(Optional.empty());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+}
+```
+
+### Stage 2: Service to Create and Write to Parquet File and Prepare CTL File
+
+Modify the service to consume `Optional<Record>` from the queue and handle end-of-data signal.
+
+```java
+package com.example.demo.service;
+
+import com.example.demo.model.Record;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+
+@Service
+public class ParquetFileService {
+
+    private static final int BATCH_SIZE = 1000;
+    private static final String OUTPUT_DIR = "src/main/resources/output";
+
+    @Autowired
+    private DataFetchingService dataFetchingService;
+
+    public void writeParquetAndCtlFiles() {
+        BlockingQueue<Optional<Record>> queue = dataFetchingService.getQueue();
+        List<Record> buffer = new ArrayList<>();
+        int totalRecords = 0;
+        double totalRecoveryAmount = 0.0;
+
+        try {
+            while (true) {
+                Optional<Record> recordOpt = queue.take();
+                if (!recordOpt.isPresent()) {  // End of data signal
+                    if (!buffer.isEmpty()) {
+                        writeBatchToParquetFile(buffer);
+                        buffer.clear();
+                    }
+                    break;
+                }
+                Record record = recordOpt.get();
+                buffer.add(record);
+                totalRecords++;
+                totalRecoveryAmount += record.getField3();
+
+                if (buffer.size() >= BATCH_SIZE) {
+                    writeBatchToParquetFile(buffer);
+                    buffer.clear();
+                }
+            }
+            writeCtlFile(totalRecords, totalRecoveryAmount);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void writeBatchToParquetFile(List<Record> batch) {
+        String outputFilePath = OUTPUT_DIR + "/output-" + System.nanoTime() + ".parquet";
+        // Implement your Parquet writing logic here
+    }
+
+    private void writeCtlFile(int totalRecords, double totalRecoveryAmount) {
+        String ctlFilePath = OUTPUT_DIR + "/output-" + System.nanoTime() + ".ctl";
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ctlFilePath))) {
+            writer.write("Total Records: " + totalRecords);
+            writer.newLine();
+            writer.write("Total Recovery Amount: " + totalRecoveryAmount);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+### Stage 3: Service to Create and Write to Excel File
+
+Modify the service to consume `Optional<Record>` from the queue and handle end-of-data signal.
+
+```java
+package com.example.demo.service;
+
+import com.example.demo.model.Record;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+
+@Service
+public class ExcelFileService {
+
+    private static final int BATCH_SIZE = 1000;
+    private static final String OUTPUT_DIR = "src/main/resources/output";
+
+    @Autowired
+    private DataFetchingService dataFetchingService;
+
+    public void writeExcelFile() {
+        BlockingQueue<Optional<Record>> queue = dataFetchingService.getQueue();
+        List<Record> buffer = new ArrayList<>();
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Data");
+
+            while (true) {
+                Optional<Record> recordOpt = queue.take();
+                if (!recordOpt.isPresent()) {  // End of data signal
+                    if (!buffer.isEmpty()) {
+                        writeBatchToExcelSheet(sheet, buffer);
+                        buffer.clear();
+                    }
+                    break;
+                }
+                buffer.add(recordOpt.get());
+
+                if (buffer.size() >= BATCH_SIZE) {
+                    writeBatchToExcelSheet(sheet, buffer);
+                    buffer.clear();
+                }
+            }
+
+            String outputFilePath = OUTPUT_DIR + "/output-" + System.nanoTime() + ".xlsx";
+            try (FileOutputStream fileOut = new FileOutputStream(outputFilePath)) {
+                workbook.write(fileOut);
+            }
+        } catch (InterruptedException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeBatchToExcelSheet(Sheet sheet, List<Record> batch) {
+        int rowNum = sheet.getLastRowNum() + 1;
+        for (Record record : batch) {
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(record.getField1());
+            row.createCell(1).setCellValue(record.getField2());
+            row.createCell(2).setCellValue(record.getField3());
+        }
+    }
+}
+```
+
+### Main Controller to Trigger the Processing
+
+Modify the controller to start the data fetching and processing services.
+
+```java
+package com.example.demo.controller;
+
+import com.example.demo.service.DataFetchingService;
+import com.example.demo.service.ExcelFileService;
+import com.example.demo.service.ParquetFileService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+public class DataProcessingController {
+
+    @Autowired
+    private DataFetchingService dataFetchingService;
+
+    @Autowired
+    private ParquetFileService parquetFileService;
+
+    @Autowired
+    private ExcelFileService excelFileService;
+
+    @GetMapping("/process")
+    public String processData() {
+        dataFetchingService.fetchData();
+
+        // Run the Parquet and Excel services concurrently
+        Thread parquetThread = new Thread(parquetFileService::writeParquetAndCtlFiles);
+        Thread excelThread = new Thread(excelFileService::writeExcelFile);
+
+        parquetThread.start();
+        excelThread.start();
+
+        try {
+            parquetThread.join();
+            excelThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return "Data processing interrupted.";
+        }
+
+        return "Data processing completed.";
+    }
+}
+```
+
+### Explanation
+
+- **BlockingQueue for Producer-Consumer**: A `BlockingQueue` is used to pass data between the producer (database reading) and consumers (file writing).
+- **Concurrent Processing**: The Parquet and Excel file services run in separate threads, consuming data from the `BlockingQueue`.
+- **End-of-Data Signal**: An `Optional.empty()` is added to the queue to signal the end of data, so consumers know when to stop processing.
+- **CTL File Generation**: The Parquet file service also generates a CTL file with metadata.
+
+This approach ensures efficient concurrent processing of large datasets, leveraging multi-threading and a producer-consumer model.
