@@ -1,0 +1,23 @@
+const jsonServer = require('json-server');
+const path = require('path');
+const server = jsonServer.create();
+const middlewares = jsonServer.defaults();
+const router = jsonServer.router({
+  inspectionDetails: require(path.join(__dirname, 'inspectionDetails.json')).inspectionDetails,
+  anotherEndpoint: require(path.join(__dirname, 'anotherEndpoint.json')).anotherEndpoint
+});
+
+// Rewriter for custom routes
+const routes = require('./routes.json');
+server.use(jsonServer.rewriter(routes));
+
+// Use default middlewares (logger, static, cors, etc.)
+server.use(middlewares);
+
+// Use custom router
+server.use(router);
+
+// Start the server
+server.listen(3000, () => {
+  console.log('JSON Server is running on port 3000');
+});
