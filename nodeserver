@@ -1,0 +1,52 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+// Directory to save the files
+const saveDir = './responses';
+
+// Create the directory if it doesn't exist
+if (!fs.existsSync(saveDir)){
+    fs.mkdirSync(saveDir);
+}
+
+// Create the HTTP server
+const server = http.createServer((req, res) => {
+    if (req.method === 'POST') {
+        let body = '';
+
+        // Collect data chunks
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+
+        // Handle the end of the request
+        req.on('end', () => {
+            const timestamp = new Date().toISOString();
+            const fileName = `response_${timestamp}.json`;
+            const filePath = path.join(saveDir, fileName);
+
+            // Save the data to a file
+            fs.writeFile(filePath, body, 'utf8', (err) => {
+                if (err) {
+                    console.error('Error saving file:', err);
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Internal Server Error');
+                } else {
+                    console.log(`Response saved to ${filePath}`);
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end('Response saved successfully');
+                }
+            });
+        });
+    } else {
+        res.writeHead(405, { 'Content-Type': 'text/plain' });
+        res.end('Method Not Allowed');
+    }
+});
+
+// Start the server
+const port = 3000;
+server.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}/`);
+});
