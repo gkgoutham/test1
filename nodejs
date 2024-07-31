@@ -1,0 +1,21 @@
+const fs = require('fs');
+
+// Load the Newman output file
+const newmanOutput = require('./output.json');
+
+// Directory to save the responses
+const responseDir = './responses';
+
+// Create the directory if it doesn't exist
+if (!fs.existsSync(responseDir)){
+    fs.mkdirSync(responseDir);
+}
+
+// Extract and save each response
+newmanOutput.run.executions.forEach((execution) => {
+    const requestName = execution.item.name;
+    const responseBody = execution.response.stream.toString(); // Convert buffer to string
+
+    // Save response to file
+    fs.writeFileSync(`${responseDir}/${requestName}.json`, responseBody, 'utf8');
+});
