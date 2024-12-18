@@ -1,5 +1,42 @@
 #!/bin/bash
 
+# Input variables
+read -p "Enter the profile name: " PROFILE_NAME
+read -p "Enter the Access Key ID: " ACCESS_KEY_ID
+read -p "Enter the Secret Access Key: " SECRET_ACCESS_KEY
+read -p "Enter the AWS Region (default: us-east-1): " AWS_REGION
+
+AWS_REGION=${AWS_REGION:-us-east-1} # Default to us-east-1 if no region is provided
+
+# Check if the credentials file exists
+AWS_CREDENTIALS_FILE="$HOME/.aws/credentials"
+AWS_CONFIG_FILE="$HOME/.aws/config"
+
+if [[ ! -d "$HOME/.aws" ]]; then
+    mkdir -p "$HOME/.aws"
+fi
+
+# Add the profile to the credentials file
+echo "Adding profile [$PROFILE_NAME] to $AWS_CREDENTIALS_FILE..."
+{
+    echo "[$PROFILE_NAME]"
+    echo "aws_access_key_id = $ACCESS_KEY_ID"
+    echo "aws_secret_access_key = $SECRET_ACCESS_KEY"
+} >> "$AWS_CREDENTIALS_FILE"
+
+# Add the region to the config file
+echo "Adding profile [$PROFILE_NAME] with region [$AWS_REGION] to $AWS_CONFIG_FILE..."
+{
+    echo "[$PROFILE_NAME]"
+    echo "region = $AWS_REGION"
+    echo "output = json"
+} >> "$AWS_CONFIG_FILE"
+
+echo "Profile [$PROFILE_NAME] has been added successfully!"
+
+
+#!/bin/bash
+
 # AWS Profiles
 SOURCE_PROFILE="source-profile"
 TARGET_PROFILE="target-profile"
