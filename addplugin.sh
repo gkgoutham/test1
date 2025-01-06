@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Specify the OpenRewrite plugin XML block
-rewrite_plugin="
+# Create a temporary file for the plugin block
+cat <<EOT > rewrite-plugin.xml
         <plugin>
             <groupId>org.openrewrite.maven</groupId>
             <artifactId>rewrite-maven-plugin</artifactId>
@@ -12,27 +12,27 @@ rewrite_plugin="
                 </activeRecipes>
             </configuration>
         </plugin>
-"
+EOT
 
-# Iterate over each service directory
 for dir in */; do
-    # Remove trailing slash from directory name
     service_dir="${dir%/}"
 
     echo "Processing $service_dir..."
 
-    # Check if the pom.xml exists
     if [ -f "$service_dir/pom.xml" ]; then
-        # Add the OpenRewrite plugin to the pom.xml
-        sed -i "/<\/plugins>/i $rewrite_plugin" "$service_dir/pom.xml"
+        echo "Adding OpenRewrite plugin to $service_dir/pom.xml"
 
-        echo "Added OpenRewrite plugin to $service_dir/pom.xml"
+        # Insert the content of the temporary file into the pom.xml
+        sed -i "/<\/plugins>/r rewrite-plugin.xml" "$service_dir/pom.xml"
 
-        # Run OpenRewrite to apply the JDK upgrade recipe
+        echo "OpenRewrite plugin added to $service_dir/pom.xml"
+
+        # Run OpenRewrite plugin
         (cd "$service_dir" && mvn rewrite:run)
     else
         echo "No pom.xml found in $service_dir. Skipping..."
     fi
 done
 
-echo "All services processed. Check the results."
+# Cleanup the temporary file
+rm rewrite-plugin.xml
