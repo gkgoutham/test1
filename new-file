@@ -152,3 +152,119 @@ Audit Logging: Logs user actions for traceability.
 
 This document outlines the architecture, workflow, and security aspects of the Signing Server. The system provides a secure and efficient way to manage SSH signed keys while enforcing role-based access control.
 
+
+
+@startuml
+actor Admin
+participant "Signing Server" as SS
+participant "Email Service" as Email
+actor User
+database "Database" as DB
+
+Admin -> SS: Create User (Email, Role)
+SS -> DB: Store user with "Pending Activation" status
+SS -> Email: Send activation link to user
+Email -> User: Deliver activation email
+
+User -> SS: Click activation link
+SS -> DB: Update user status to "Active"
+SS -> User: Prompt to set password
+User -> SS: Submit password
+SS -> DB: Store hashed password
+
+User -> SS: Login with credentials
+SS -> DB: Validate user credentials
+DB -> SS: Return user roles
+SS -> User: Grant access based on assigned role
+@enduml
+
+
+@startuml
+actor Admin
+participant "Signing Server" as SS
+database "Database" as DB
+
+Admin -> SS: Create Signing Key (Key Name, Type, Password)
+SS -> DB: Store Signing Key (Encrypted)
+SS -> Admin: Confirmation of Key Creation
+
+Admin -> SS: Upload Private Key (.pem)
+SS -> Admin: Request PEM Password
+Admin -> SS: Submit PEM Password
+SS -> SS: Extract Public & Private Keys
+SS -> DB: Store Keys (Encrypted)
+SS -> Admin: Confirmation of Key Upload
+
+Admin -> SS: Assign Signing Key to User
+SS -> DB: Update User's Assigned Keys
+SS -> Admin: Confirmation of Assignment
+@enduml
+
+
+@startuml
+actor User
+participant "Signing Server" as SS
+database "Database" as DB
+
+User -> SS: Upload `.req` file (Request & HMAC)
+SS -> SS: Validate HMAC Integrity
+SS -> SS: Validate Request Fields
+SS -> DB: Fetch Assigned Signing Key
+DB -> SS: Return Signing Key
+SS -> SS: Concatenate Fields with `|`
+SS -> SS: Sign using Private Key
+SS -> DB: Store Signed File
+SS -> User: Provide Signed Key for Download
+@enduml
+
+
+@startuml
+rectangle "Frontend (Angular)" as Frontend {
+  [User Interface]
+}
+
+rectangle "Signing Server (Backend)" as Backend {
+  [Authentication & Authorization]
+  [User & Role Management]
+  [Signing Key Management]
+  [SSH Signed Keys Processing]
+}
+
+rectangle "Database" as DB {
+  [Users & Roles]
+  [Signing Keys]
+  [Signed Requests]
+}
+
+rectangle "External Services" as External {
+  [Email Service]
+}
+
+Frontend --> Backend: REST API Calls (Login, Signing, etc.)
+Backend --> DB: Store & Retrieve Data
+Backend --> External: Send Activation Emails
+@enduml
+
+
+
+@startuml
+title Signing Server - System Context
+
+actor "User" as User
+actor "Administrator" as Admin
+
+rectangle "Signing Server (Python)" as SigningServer {
+  [Authentication & Authorization]
+  [User Management]
+  [Signing Key Management]
+  [Configuration Management]
+  [SSH Key Signing]
+}
+
+database "PostgreSQL Database" as Database
+
+User --> SigningServer : "Access Signing Keys"
+Admin --> SigningServer : "Manage Users, Keys, Configs"
+SigningServer --> Database : "Store/Retrieve Data (Users, Keys, Configs)"
+
+@enduml
