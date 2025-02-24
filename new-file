@@ -268,3 +268,28 @@ Admin --> SigningServer : "Manage Users, Keys, Configs"
 SigningServer --> Database : "Store/Retrieve Data (Users, Keys, Configs)"
 
 @enduml
+
+
+
+
+@startuml
+title SSH Signed Keys Workflow
+
+actor "User" as User
+participant "Frontend" as Frontend
+participant "Backend (Python)" as Backend
+database "PostgreSQL" as Database
+
+User -> Frontend : Upload .req file (SSH signing request)
+Frontend -> Backend : Send request file for validation
+Backend -> Backend : Validate HMAC integrity
+Backend -> Backend : Extract and validate request fields
+Backend -> Database : Retrieve Signing Key
+Database -> Backend : Return Signing Key
+Backend -> Backend : Concatenate request fields and sign with Signing Key
+Backend -> Backend : Create signed file\n(Original fields + Signed Key)
+Backend -> Database : Store signed file
+Backend -> Frontend : Provide signed file for download
+Frontend -> User : Download signed file
+
+@enduml
