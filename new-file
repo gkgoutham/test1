@@ -1,0 +1,154 @@
+Signing Server Documentation
+
+1. Overview
+
+The Signing Server provides secure SSH key signing functionalities with role-based access control. It supports user authentication, role management, signing key creation, and SSH key signing operations.
+
+2. Functionalities
+
+2.1 Login
+
+Users authenticate using their credentials.
+
+New users receive an activation link via email to activate their account and set their password.
+
+Based on roles, users either access all functionalities (admin) or only SSH key signing (regular users).
+
+2.2 SSH Signed Keys
+
+Users upload a .req file containing:
+
+request object (SSH public key data, expiration date, domain name, description, etc.)
+
+hmac object (HMAC code for validation)
+
+The server validates the HMAC and individual request fields.
+
+If valid, the fields are concatenated using | and signed using the selected Signing Key.
+
+The signed file is generated and made available for download.
+
+2.3 System Administration (Admin Only)
+
+a. Users and Roles
+
+Admins can create and manage user roles.
+
+Roles define access permissions (Admin or Regular User).
+
+b. Signing Key Management
+
+Admins can create signing keys:
+
+Provide a new key name, key type (EC or RSA), and storage password.
+
+Alternatively, upload an existing .pem file (RSA/EC) with a corresponding password.
+
+Private and public keys are extracted and securely stored in the database.
+
+Users with assigned roles can utilize the signing keys.
+
+c. Configuration
+
+System-wide settings for signing keys and authentication.
+
+Logging and monitoring functionalities.
+
+3. Activity Diagram: User Registration & Activation
+
++------------------+        +-----------------+        +---------------------+
+| User            |        | Signing Server  |        | Email Service       |
++------------------+        +-----------------+        +---------------------+
+        |                      |                          |
+        | Register new account |                          |
+        |--------------------->|                          |
+        |                      | Generate activation link|
+        |                      |------------------------>|
+        |                      |                          |
+        |                      | Send activation email   |
+        |                      |<------------------------|
+        | Click activation link|                          |
+        |--------------------->|                          |
+        |                      | Activate account        |
+        |                      | Set user password       |
+        |                      | Redirect to login page  |
+        |<---------------------|                          |
+
+4. UML Diagram: System Components
+
++------------------------+
+|        User           |
++------------------------+
+          |
+          v
++------------------------+
+|      Authentication   |
+| - Login/Logout       |
+| - Account Activation |
++------------------------+
+          |
+          v
++------------------------+
+|      Authorization    |
+| - Role Management    |
++------------------------+
+          |
+          v
++----------------------------+
+|   Signing Key Management   |
+| - Create/Upload Keys       |
+| - Assign Roles             |
++----------------------------+
+          |
+          v
++------------------------+
+|    SSH Key Signing    |
+| - Validate Request   |
+| - Sign SSH Keys      |
++------------------------+
+
+5. Workflow for SSH Key Signing
+
+User uploads a .req file.
+
+Server validates HMAC integrity.
+
+Server extracts and validates request fields.
+
+If valid, fields are concatenated with |.
+
+Selected Signing Key is used to sign the request.
+
+Signed file is made available for download.
+
+6. Activity Diagram: Signing the .req File Using the Signed Keys
+
++------------------+        +---------------------+        +----------------------+
+| User            |        | Signing Server      |        | Database             |
++------------------+        +---------------------+        +----------------------+
+        |                      | Validate `.req` File    |
+        |--------------------->|------------------------>|
+        |                      | Verify HMAC Integrity  |
+        |                      | Validate Request Fields|
+        |                      | Retrieve Signing Key   |
+        |                      |------------------------>|
+        |                      | Sign the Request       |
+        |                      | Store Signed File      |
+        |                      |<------------------------|
+        | Receive Signed File  |
+        |<---------------------|
+
+7. Security Considerations
+
+HMAC Validation: Ensures request integrity.
+
+Role-Based Access Control: Restricts unauthorized access.
+
+Secure Storage: Private keys are encrypted before storage.
+
+Audit Logging: Logs user actions for traceability.
+
+8. Conclusion
+
+This document outlines the architecture, workflow, and security aspects of the Signing Server. The system provides a secure and efficient way to manage SSH signed keys while enforcing role-based access control.
+
