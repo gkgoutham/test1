@@ -1,0 +1,35 @@
+Here’s an example of Gherkin-style Given-When-Then acceptance criteria for migrating a service from Java 1.8 to 17 in Jira:
+
+Acceptance Criteria
+
+Scenario 1: Ensure the application compiles and runs with Java 17
+Given the service is currently running on Java 1.8
+When the service is upgraded to Java 17
+Then the application should compile successfully without errors
+
+Scenario 2: Ensure all dependencies are compatible with Java 17
+Given the service has dependencies compatible with Java 1.8
+When the dependencies are updated for Java 17 compatibility
+Then the service should function correctly without breaking changes
+
+Scenario 3: Ensure the service passes all unit and integration tests
+Given the service has a suite of unit and integration tests
+When the tests are executed on Java 17
+Then all tests should pass successfully
+
+Scenario 4: Ensure the service runs successfully in the target environment
+Given the service is deployed on an environment using Java 1.8
+When the service is deployed in the same environment but running Java 17
+Then the application should start and function as expected
+
+Scenario 5: Ensure performance and memory footprint are within acceptable limits
+Given the service has performance benchmarks on Java 1.8
+When the service is migrated to Java 17
+Then the performance and memory consumption should be within acceptable limits
+
+Scenario 6: Ensure backward compatibility of APIs
+Given the service exposes APIs to consumers
+When the service is migrated to Java 17
+Then API contracts should remain unchanged unless explicitly planned for updates
+
+Would you like to add any specific business or technical constraints?
