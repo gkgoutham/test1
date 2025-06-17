@@ -1,26 +1,24 @@
-<link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="../iron-icon/iron-icon.html">
-<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/polymer/polymer.html">
 
 <dom-module id="my-alert-message">
   <template>
     <style>
       :host {
         display: block;
-        font-family: "Helvetica Neue", Arial, sans-serif;
-        border: 1px solid var(--alert-border-color, #d9534f);
-        background-color: var(--alert-background-color, #f2dede);
-        color: var(--alert-text-color, #a94442);
-        border-radius: 4px;
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
         padding: 12px 16px;
+        margin: 10px 0;
+        border-radius: 4px;
         position: relative;
-        box-sizing: border-box;
+        font-family: sans-serif;
       }
 
       .icon {
         display: inline-block;
         vertical-align: middle;
-        margin-right: 10px;
+        margin-right: 8px;
       }
 
       .message {
@@ -31,27 +29,21 @@
       .close-btn {
         position: absolute;
         top: 8px;
-        right: 12px;
-        background: none;
+        right: 8px;
+        background: transparent;
         border: none;
-        font-size: 20px;
-        font-weight: bold;
-        color: inherit;
+        font-size: 16px;
         cursor: pointer;
-      }
-
-      a {
         color: inherit;
-        text-decoration: underline;
       }
     </style>
 
     <template is="dom-if" if="{{!closed}}">
-      <div class="icon">
-        <iron-icon icon="{{icon}}"></iron-icon>
+      <div>
+        <span class="icon">⚠️</span>
+        <span class="message" id="messageContainer"></span>
+        <button class="close-btn" on-click="closeAlert">&times;</button>
       </div>
-      <div class="message" id="messageContainer"></div>
-      <button class="close-btn" on-click="close">&times;</button>
     </template>
   </template>
 
@@ -60,13 +52,8 @@
       is: 'my-alert-message',
 
       properties: {
-        icon: {
-          type: String,
-          value: 'warning'
-        },
         message: {
           type: String,
-          value: '',
           observer: '_messageChanged'
         },
         closed: {
@@ -76,11 +63,22 @@
       },
 
       _messageChanged: function(newVal) {
-        // Allow safe HTML rendering
-        this.$.messageContainer.innerHTML = newVal;
+        // Wait until DOM is stamped
+        this.async(() => {
+          if (this.$.messageContainer) {
+            this.$.messageContainer.innerHTML = newVal || '';
+          }
+        });
       },
 
-      close: function() {
+      ready: function() {
+        // Force update once DOM is ready
+        if (this.message) {
+          this._messageChanged(this.message);
+        }
+      },
+
+      closeAlert: function() {
         this.closed = true;
       }
     });
