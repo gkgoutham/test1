@@ -15,15 +15,9 @@
         font-family: sans-serif;
       }
 
-      .icon {
-        display: inline-block;
-        vertical-align: middle;
-        margin-right: 8px;
-      }
-
-      .message {
-        display: inline-block;
-        vertical-align: middle;
+      ::content a {
+        color: #0c5460;
+        text-decoration: underline;
       }
 
       .close-btn {
@@ -36,12 +30,15 @@
         cursor: pointer;
         color: inherit;
       }
+
+      .hide {
+        display: none;
+      }
     </style>
 
     <template is="dom-if" if="{{!closed}}">
       <div>
-        <span class="icon">⚠️</span>
-        <span class="message" id="messageContainer"></span>
+        <content></content>
         <button class="close-btn" on-click="closeAlert">&times;</button>
       </div>
     </template>
@@ -52,33 +49,13 @@
       is: 'my-alert-message',
 
       properties: {
-        message: {
-          type: String,
-          observer: '_messageChanged'
-        },
         closed: {
           type: Boolean,
           value: false
         }
       },
 
-      _messageChanged: function(newVal) {
-        // Wait until DOM is stamped
-        this.async(() => {
-          if (this.$.messageContainer) {
-            this.$.messageContainer.innerHTML = newVal || '';
-          }
-        });
-      },
-
-      ready: function() {
-        // Force update once DOM is ready
-        if (this.message) {
-          this._messageChanged(this.message);
-        }
-      },
-
-      closeAlert: function() {
+      closeAlert: function () {
         this.closed = true;
       }
     });
