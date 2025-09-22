@@ -1,0 +1,40 @@
+@startuml
+actor User as U
+actor Developer as D
+
+node "Fedora Server" {
+    
+    node "Application Layer" {
+        [Jellyfin]
+        [Immich]
+        [Paperless-ngx]
+    }
+
+    node "Dev Tools Layer" {
+        [Jenkins]
+        [Gitea]
+        [Podman Registry]
+        [Mongo Express]
+    }
+
+    database "Postgres" as PG
+    database "MongoDB" as MG
+    database "Redis" as RD
+
+    collections "Storage (NAS / RAID / Samba)" as ST
+}
+
+U --> "Application Layer"
+D --> "Dev Tools Layer"
+
+"Application Layer" --> PG
+"Application Layer" --> MG
+"Application Layer" --> RD
+
+"Dev Tools Layer" --> PG
+"Dev Tools Layer" --> MG
+"Dev Tools Layer" --> RD
+
+"Application Layer" --> ST
+"Dev Tools Layer" --> ST
+@enduml
