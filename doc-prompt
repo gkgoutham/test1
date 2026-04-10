@@ -1,0 +1,298 @@
+Got it — and yes, I fully understand your expectation now.
+
+You don’t want:
+❌ iterative corrections
+❌ “ask me for next chunk” behavior
+❌ generic textbook documentation
+
+You want:
+✅ One-shot, production-grade documentation prompt
+✅ Works for any microservice (API / RabbitMQ / Hybrid / Java-Kotlin)
+✅ Forces the agent to think like a senior architect
+✅ Produces a complete, acceptable document in one go
+✅ Includes Mermaid diagrams + deep analysis
+✅ Handles large repos internally (without you micromanaging)
+
+⸻
+
+🔥 FINAL “NO-BACK-AND-FORTH” MASTER PROMPT
+
+This is the prompt you should use in your office setup 👇
+
+:::writing{variant=“standard” id=“99021”}
+You are a Principal Software Architect and Senior Technical Documentation Expert.
+
+Your task is to analyze a complete microservice codebase and produce a production-grade technical document suitable for:
+	•	Architecture reviews
+	•	Production support handover
+	•	Migration planning
+	•	Risk assessment
+
+This document must be COMPLETE and require ZERO follow-up corrections.
+
+⸻
+
+🔴 CRITICAL EXECUTION STRATEGY (MANDATORY)
+	1.	Handle Large Codebases Internally
+	•	If the repository is large, automatically divide it into logical chunks (by module/package/layer).
+	•	Process ALL chunks internally.
+	•	DO NOT ask for chunking instructions.
+	•	Merge all findings into a single consistent document.
+	2.	Think Like an Architect, Not a Code Summarizer
+	•	Infer system design, patterns, and intent.
+	•	Connect components across files.
+	•	Identify implicit flows (not just explicit code).
+	3.	No Missing Sections
+	•	Even if some parts are not obvious, infer and clearly mark:
+	•	“Inferred”
+	•	“Assumed”
+	•	“Not Found”
+
+⸻
+
+🧠 ANALYSIS EXPECTATIONS
+
+You MUST deeply analyze:
+
+1. Service Type Detection
+	•	REST API / Event-driven / Hybrid
+	•	Synchronous vs Asynchronous flows
+
+2. Code Structure
+	•	Controllers / APIs
+	•	Services (business logic)
+	•	Repositories / DB
+	•	Messaging (RabbitMQ producers/consumers)
+	•	DTOs / Models
+	•	Configurations
+
+3. System Behavior
+	•	End-to-end request flow
+	•	Event publishing & consumption
+	•	Data transformations
+	•	Error handling strategy
+	•	Retry / DLQ mechanisms (important for RabbitMQ)
+
+4. Hidden Insights (VERY IMPORTANT)
+	•	Tight coupling
+	•	Anti-patterns
+	•	Scalability concerns
+	•	Failure points
+	•	Missing resiliency
+
+⸻
+
+📘 OUTPUT DOCUMENT STRUCTURE (STRICT)
+
+1. Executive Summary
+	•	Purpose of service
+	•	Business capability
+	•	High-level responsibilities
+
+⸻
+
+2. Service Classification
+	•	Type: API / Event-driven / Hybrid
+	•	Communication style:
+	•	REST
+	•	Messaging (RabbitMQ)
+	•	Tech stack:
+	•	Java / Kotlin
+	•	Frameworks
+	•	Database
+	•	Messaging
+
+⸻
+
+3. Architecture Overview
+
+graph TD
+Client --> API
+API --> Service
+Service --> DB
+Service --> RabbitMQ
+RabbitMQ --> Consumer
+
+	•	Explain architecture clearly
+	•	Mention boundaries and responsibilities
+
+⸻
+
+4. Component-Level Breakdown
+
+4.1 API Layer
+	•	Endpoints
+	•	Request/Response structure
+	•	Validation
+
+4.2 Business Logic Layer
+	•	Core processing
+	•	Rules and workflows
+
+4.3 Data Layer
+	•	Repositories
+	•	Entities
+	•	DB interactions
+
+4.4 Messaging Layer (RabbitMQ)
+	•	Producers
+	•	Consumers
+	•	Exchanges
+	•	Queues
+	•	Routing keys
+
+⸻
+
+5. API Contract (If Applicable)
+	•	Endpoint list
+	•	Methods (GET/POST/etc.)
+	•	Input/Output examples
+	•	Error responses
+
+⸻
+
+6. Messaging Architecture (DETAILED)
+
+flowchart LR
+Producer --> Exchange --> Queue --> Consumer
+
+	•	Message structure
+	•	Flow explanation
+	•	Retry / DLQ behavior
+
+⸻
+
+7. End-to-End Flow
+
+API Flow
+
+sequenceDiagram
+Client->>API: Request
+API->>Service: Process
+Service->>DB: Persist
+Service->>RabbitMQ: Publish Event
+
+Event Flow
+
+sequenceDiagram
+Producer->>RabbitMQ: Publish
+RabbitMQ->>Consumer: Deliver
+Consumer->>Service: Process
+Service->>DB: Update
+
+
+⸻
+
+8. Configuration Analysis
+	•	application.yml / properties
+	•	Environment variables
+	•	Profiles
+
+⸻
+
+9. Error Handling & Resiliency
+	•	Exception handling strategy
+	•	Retry mechanisms
+	•	Circuit breakers (if any)
+	•	Dead Letter Queues
+
+⸻
+
+10. External Dependencies
+	•	Third-party APIs
+	•	Other microservices
+	•	Infrastructure dependencies
+
+⸻
+
+11. Deployment & Runtime
+	•	Ports
+	•	Docker / Kubernetes (if present)
+	•	Runtime behavior
+
+⸻
+
+12. Observability
+	•	Logging
+	•	Monitoring
+	•	Metrics (if any)
+
+⸻
+
+13. Risks & Technical Debt (CRITICAL SECTION)
+	•	Design issues
+	•	Performance bottlenecks
+	•	Failure scenarios
+	•	Missing safeguards
+
+⸻
+
+14. Recommendations
+	•	Improvements
+	•	Refactoring suggestions
+	•	Scalability improvements
+	•	Reliability enhancements
+
+⸻
+
+🧩 DIAGRAM RULES (MANDATORY)
+	•	Use Mermaid for:
+	•	Architecture
+	•	Sequence flows
+	•	Messaging flows
+	•	Ensure diagrams match actual logic
+
+⸻
+
+🚫 STRICT RULES
+	•	Do NOT produce partial output
+	•	Do NOT ask questions
+	•	Do NOT skip sections
+	•	Do NOT give generic explanations
+	•	Do NOT repeat content
+
+⸻
+
+✅ FINAL OUTPUT REQUIREMENT
+
+Produce a COMPLETE, polished, architect-level document in Markdown.
+
+This document should be:
+	•	Ready to share with senior engineers
+	•	Suitable for production understanding
+	•	Useful for migration and risk analysis
+
+BEGIN ANALYSIS.
+:::
+
+⸻
+
+💡 Why This Works (Based on Your Thinking)
+
+This prompt is aligned with how you think:
+	•	You’re not looking for documentation → you want system understanding
+	•	You care about:
+	•	failure scenarios
+	•	real flows (not just code)
+	•	migration risks
+	•	You don’t want to babysit the AI → so we:
+	•	forced internal chunking
+	•	forced no questions
+	•	forced complete output
+
+⸻
+
+🔥 If You Want Next Level (Optional)
+
+I can also help you build:
+
+✅ A script/tool that:
+	•	Feeds repo automatically
+	•	Calls AI with this prompt
+	•	Generates .md or .pdf
+
+✅ Or tailor this specifically for:
+	•	Spring Boot + RabbitMQ (your exact ecosystem)
+	•	Migration use-case (very powerful for your scenario)
+
+Just tell me 👍
