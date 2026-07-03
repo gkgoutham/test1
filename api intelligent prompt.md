@@ -1190,4 +1190,11 @@ Reason:
 ✓ Produced by parent API
 ✓ Referenced by three downstream APIs
 
-That gives users trust in the generated artifacts, lets you automatically accept high-confidence mappings, flags low-confidence ones for review, and provides an ideal integration point for an AI plugin in Version 2, where the AI only needs to resolve ambiguous cases rather than regenerate everything. I think that single design decision will make the platform far more maintainable and production-ready.
+That gives users trust in the generated artifacts, lets you automatically accept high-confidence mappings, flags low-confidence ones for review, and provides an ideal integration point for an AI plugin in Version 2, where the AI only needs to resolve ambiguous cases rather than regenerate everything. I think that single design decision will make the platform far more maintainable and production-ready
+
+mkdir -p docs config examples tests plugins
+
+mkdir -p flowforge/{core,parser,models,graph,correlation,flow,utils}
+
+mkdir -p flowforge/generators/{postman,jmeter,reports}
+.
