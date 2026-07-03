@@ -1198,3 +1198,181 @@ mkdir -p flowforge/{core,parser,models,graph,correlation,flow,utils}
 
 mkdir -p flowforge/generators/{postman,jmeter,reports}
 .
+
+Correct. 👍
+
+I was describing the **design**, not the Python implementation.
+
+Now let's actually write the code.
+
+Since you're using Python 3.10+ (I assume), I'd use **dataclasses**.
+
+## parameter.py
+
+```python
+from dataclasses import dataclass
+from typing import Any, Optional
+
+
+@dataclass
+class Parameter:
+    """
+    Represents an API parameter.
+
+    Example:
+        Path Parameter:
+            /devices/{deviceId}
+
+        Query Parameter:
+            ?page=1
+
+        Header:
+            Authorization
+
+        Request Body Field:
+            deviceName
+    """
+
+    name: str
+    data_type: str
+    location: str  # path, query, header, body
+    required: bool = False
+    description: Optional[str] = None
+    example: Any = None
+```
+
+This is a complete model.
+
+---
+
+## schema.py
+
+```python
+from dataclasses import dataclass, field
+from typing import List
+
+from .parameter import Parameter
+
+
+@dataclass
+class Schema:
+    name: str
+    fields: List[Parameter] = field(default_factory=list)
+```
+
+Notice:
+
+A Schema contains many Parameters.
+
+---
+
+## response.py
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+
+from .schema import Schema
+
+
+@dataclass
+class Response:
+    status_code: int
+    description: str
+    schema: Optional[Schema] = None
+```
+
+---
+
+## api_definition.py
+
+```python
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+from .parameter import Parameter
+from .response import Response
+from .schema import Schema
+
+
+@dataclass
+class ApiDefinition:
+    name: str
+    path: str
+    method: str
+
+    summary: Optional[str] = None
+    description: Optional[str] = None
+
+    tags: List[str] = field(default_factory=list)
+
+    parameters: List[Parameter] = field(default_factory=list)
+
+    request_body: Optional[Schema] = None
+
+    responses: List[Response] = field(default_factory=list)
+```
+
+---
+
+## Why this design?
+
+Suppose your Swagger contains:
+
+```yaml
+POST /devices
+
+Request Body:
+    name
+    serialNumber
+
+Response:
+    deviceId
+    name
+```
+
+The parser will create:
+
+```text
+ApiDefinition
+│
+├── Parameters
+│
+├── RequestBody (Schema)
+│
+│      ├── Parameter(name)
+│      └── Parameter(serialNumber)
+│
+└── Responses
+        │
+        └── Response(201)
+                │
+                └── Schema
+                        │
+                        ├── Parameter(deviceId)
+                        └── Parameter(name)
+```
+
+Notice how everything is connected.
+
+---
+
+# My advice
+
+Don't try to create all 9 models today.
+
+Instead, build them in this order:
+
+1. ✅ Parameter
+2. ✅ Schema
+3. ✅ Response
+4. ✅ ApiDefinition
+5. Project
+6. Entity
+7. Variable
+8. Dependency
+9. Flow
+
+After `ApiDefinition` is complete, we'll write the **Swagger Parser**. Once the parser is working, the remaining models (Entity, Flow, Dependency, etc.) will become much easier to design because you'll have real API data flowing through the system instead of guessing what fields you'll need.
+
+This iterative approach will save you from redesigning models later.
