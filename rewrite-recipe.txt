@@ -1,0 +1,309 @@
+Phase 1 - Recipe Catalog Builder (One Time)
+Objective
+
+Build an offline recipe catalog from all downloaded OpenRewrite recipe JARs.
+
+Input
+~/.m2/repository/
+
+containing
+
+rewrite-spring.jar
+rewrite-hibernate.jar
+rewrite-testing-frameworks.jar
+...
+Process
+Scan every rewrite*.jar
+Read META-INF/rewrite/recipes.csv
+Merge all CSVs
+Remove duplicates
+Produce one catalog
+Output
+recipes.json
+
+Example
+
+{
+  "recipe":"org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5",
+  "displayName":"Upgrade Spring Boot 3.5",
+  "description":"Upgrade Spring Boot applications to 3.5",
+  "artifact":"rewrite-spring",
+  "category":"Spring"
+}
+AI Prompt 1
+
+Build a Python utility that recursively scans the local Maven repository (~/.m2/repository) for every rewrite*.jar. For each JAR, extract META-INF/rewrite/recipes.csv, parse it using Python's csv module, merge all recipes into a single collection, remove duplicates based on the recipe name, and export the result as recipes.json. Preserve every column from the CSV and also record the source JAR name.
+
+Phase 2 - Dependency Collector
+Objective
+
+Identify all dependencies used across all repositories.
+
+Input
+Git repositories
+Process
+Checkout develop
+
+↓
+
+mvn dependency:list
+
+↓
+
+Extract dependencies
+Output
+{
+    "project":"customer-service",
+    "dependencies":[
+        "org.springframework.boot",
+        "org.flywaydb",
+        "org.jetbrains.kotlin"
+    ]
+}
+AI Prompt 2
+
+Build a Python utility that iterates over a list of Git repositories, checks out the develop branch, executes mvn dependency:list, extracts the Maven coordinates (groupId, artifactId, version), and produces a JSON file for each project. Also generate a consolidated list of unique dependencies across all projects.
+
+Phase 3 - Technology Mapper
+
+This is our intelligence layer.
+
+Not AI.
+
+A simple YAML file.
+
+Example
+
+technologies:
+
+  Spring Boot:
+    groups:
+      - org.springframework.boot
+
+  Spring Security:
+    groups:
+      - org.springframework.security
+
+  Flyway:
+    groups:
+      - org.flywaydb
+
+  Kotlin:
+    groups:
+      - org.jetbrains.kotlin
+
+  Jackson:
+    groups:
+      - com.fasterxml.jackson
+
+This file will be maintained by us.
+
+AI Prompt 3
+
+Build a Python utility that reads the consolidated dependency list and maps each dependency to a technology using a configurable YAML mapping file. Produce a report listing detected technologies for each project and identify any dependencies that could not be mapped.
+
+Phase 4 - Candidate Recipe Finder
+
+Python only.
+
+No AI.
+
+Input
+
+Technologies
+
++
+
+recipes.json
+
+Example
+
+Technology
+
+↓
+
+Spring Boot
+
+↓
+
+Search recipes.json
+
+↓
+
+Find every recipe mentioning
+
+Spring Boot
+
+Output
+
+{
+    "Spring Boot":[
+        ...
+        ...
+    ],
+
+    "Flyway":[
+        ...
+    ]
+}
+AI Prompt 4
+
+Build a Python utility that reads recipes.json and the detected technologies. For each technology, search the recipe catalog using the recipe name, display name, description, and category fields. Produce a ranked list of candidate recipes grouped by technology.
+
+Phase 5 - Local LLM
+
+This is where AI finally comes in.
+
+It is not discovering recipes.
+
+It is selecting the best recipes.
+
+Input
+
+Current versions
+
+Target versions
+
+Dependencies
+
+Candidate recipes
+
+Output
+
+{
+    "selectedRecipes":[
+        ...
+    ],
+
+    "ignored":[
+        ...
+    ]
+}
+AI Prompt 5 (Local Model)
+
+You are an OpenRewrite migration expert. Your task is to select the minimum set of recipes required for a project migration.
+
+Current project:
+
+Spring Boot 2.7.18
+Spring Security 5.8
+Kotlin 1.6.20
+Flyway 5.2
+
+Target:
+
+Spring Boot 3.5.16
+Java 17
+
+Candidate recipes:
+
+(JSON)
+
+Select only the recipes required for this migration. Prefer composite recipes over individual child recipes. Avoid duplicate functionality. Return valid JSON containing:
+
+selectedRecipes
+ignoredRecipes
+reason for every decision.
+Phase 6 - rewrite.yml Generator
+
+No AI.
+
+Very deterministic.
+
+Input
+
+selectedRecipes
+
+Output
+
+type: specs.openrewrite.org/v1beta/recipe
+
+name: company.SpringBoot35Migration
+
+recipeList:
+
+  - org.openrewrite....
+
+  - org.openrewrite....
+AI Prompt 6
+
+Build a Python utility that reads the selected recipe JSON and generates a valid OpenRewrite rewrite.yml. Ensure the recipe list is unique, sorted alphabetically, and conforms to the OpenRewrite YAML schema.
+
+Phase 7 - Validation
+
+Finally
+
+rewrite.yml
+
+↓
+
+mvn rewrite:dryRun
+
+↓
+
+Report
+Final Architecture
+Recipe JARs
+      │
+      ▼
+recipes.csv
+      │
+      ▼
+recipes.json
+      │
+      │
+Repositories
+      │
+      ▼
+dependency:list
+      │
+      ▼
+Dependencies
+      │
+      ▼
+Technology Mapper
+      │
+      ▼
+Candidate Recipes
+      │
+      ▼
+Local LLM
+      │
+      ▼
+Selected Recipes
+      │
+      ▼
+rewrite.yml
+      │
+      ▼
+OpenRewrite
+One improvement I'd make
+
+I'd add a final artifact after rewrite.yml:
+
+migration-report.json
+
+For example:
+
+{
+  "project": "customer-service",
+  "targetSpringBoot": "3.5.16",
+  "detectedTechnologies": [
+    "Spring Boot",
+    "Spring Security",
+    "Flyway",
+    "Kotlin"
+  ],
+  "selectedRecipes": [
+    "org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5",
+    "org.openrewrite.java.spring.security6.UpgradeSpringSecurity_6"
+  ],
+  "ignoredRecipes": [
+    {
+      "recipe": "org.openrewrite.java.spring.boot3.SpringBootProperties_3_5",
+      "reason": "Already included by UpgradeSpringBoot_3_5"
+    }
+  ]
+}
+
+This gives your team a clear audit trail showing why each recipe was selected, making it much easier to review and trust the generated rewrite.yml. I think this will be especially valuable in an enterprise migration where changes need to be explainable.
